@@ -14,7 +14,7 @@ export default function SettingsPage() {
 
     async function loadSettings() {
         const data = await getCompanyAction();
-        if ('error' in data) {
+        if (data && 'error' in data) {
             toast.error(data.error as string);
         } else {
             setCompany(data);
