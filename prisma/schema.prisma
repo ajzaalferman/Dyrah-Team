@@ -1,0 +1,88 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Company {
+  id        String   @id @default(uuid())
+  name      String
+  officeLatitude  Float?   // Office location for geofencing
+  officeLongitude Float?
+  geofenceRadius  Int      @default(100) // In meters
+  workStartTime   String   @default("09:00")
+  workEndTime     String   @default("18:00")
+  createdAt DateTime @default(now())
+  users     User[]
+  policies  Policy[]
+}
+
+model User {
+  id           String             @id @default(uuid())
+  email        String             @unique
+  passwordHash String
+  name         String
+  role         String             @default("EMPLOYEE") // EMPLOYEE, MANAGER, ADMIN
+  companyId    String
+  company      Company            @relation(fields: [companyId], references: [id])
+  department   String?
+  employeeId   String?            // Internal ID like "EMP-001"
+  attendance   AttendanceRecord[]
+  leaves       LeaveRequest[]     @relation("Requester")
+  approvedLeaves LeaveRequest[]   @relation("Approver")
+  auditLogs    AuditLog[]
+  createdAt    DateTime           @default(now())
+}
+
+model AttendanceRecord {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      DateTime  // Stored as midnight timestamp for the day
+  checkIn   DateTime
+  checkOut  DateTime?
+  status    String    @default("PRESENT") // PRESENT, LATE, ABSENT, HALF_DAY
+  location  String?   // JSON string of lat/long
+  method    String    @default("WEB") // WEB, MOBILE, QR, GPS, REMOTE
+  photoUrl  String?   // Base64 or URL to selfie taken during clock-in
+  isOffline Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([userId, date])
+}
+
+model LeaveRequest {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation("Requester", fields: [userId], references: [id], onDelete: Cascade)
+  type      String    // SICK, CASUAL, VACATION
+  startDate DateTime
+  endDate   DateTime
+  reason    String
+  status    String    @default("PENDING") // PENDING, APPROVED, REJECTED
+  approverId String?
+  approver  User?     @relation("Approver", fields: [approverId], references: [id], onDelete: SetNull)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  action    String   // CLOCK_IN, APPROVE_LEAVE, etc.
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  details   String   // Description of change
+  createdAt DateTime @default(now())
+}
+
+model Policy {
+  id        String   @id @default(uuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id])
+  key       String   // e.g., "WORK_START_TIME"
+  value     String   // e.g., "09:00"
+}
