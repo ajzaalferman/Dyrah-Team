@@ -51,6 +51,13 @@ export async function updateSession(request: NextRequest) {
 
     // Refresh expiration
     const parsed = await decrypt(session);
+
+    if (!parsed) {
+        const res = NextResponse.next();
+        res.cookies.delete('session');
+        return res;
+    }
+
     parsed.expires = new Date(Date.now() + 24 * 60 * 60 * 1000);
     const res = NextResponse.next();
     res.cookies.set({

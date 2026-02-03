@@ -13,7 +13,13 @@ export async function loginAction(formData: FormData) {
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
 
-    const user = await prisma.user.findUnique({ where: { email } });
+    let user;
+    try {
+        user = await prisma.user.findUnique({ where: { email } });
+    } catch (e) {
+        console.error("Database connection failed:", e);
+        return { error: "Database connection failed. Note: SQLite on Vercel is read-only or ephemeral." };
+    }
 
     if (!user || !user.passwordHash) {
         return { error: 'Invalid credentials' };
